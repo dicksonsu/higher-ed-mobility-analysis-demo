@@ -1,5 +1,5 @@
 # 02_descriptive_analysis.R
-# Purpose: Generate descriptive summaries and visualizations for institutional trends
+# Purpose: Generate descriptive summaries and visualizations for institutional patterns
 # Author: Dickson Su
 # Project: higher-ed-mobility-analysis-demo
 

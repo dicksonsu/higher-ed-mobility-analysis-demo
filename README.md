@@ -4,7 +4,7 @@ This repository demonstrates a multi-year R-based workflow for analyzing higher 
 
 ## Project overview
 
-In applied research on higher education and economic mobility, I worked with large administrative datasets (e.g., College Scorecard) to construct institutional panels, generate descriptive trends, and estimate regression models linking access measures to institutional characteristics.
+In applied research on higher education and economic mobility, I worked with large administrative datasets (e.g., College Scorecard) to construct institutional panels, generate descriptive trends, and estimate regression models linking access measures to institutional characteristics. This type of workflow is relevant for organizations seeking to understand how institutional characteristics relate to access and outcomes across large administrative datasets.
 
 This repository provides a simplified, reproducible version of that workflow.
 

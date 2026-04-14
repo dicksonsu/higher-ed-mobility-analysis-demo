@@ -33,7 +33,7 @@ if (!dir.exists(derived_dir)) {
 inst_data <- read_csv(file.path(raw_dir, "MERGED2024_25_PP.csv"))
 
 if (!file.exists(input_file)) {
-  stop("Sample institutional data file not found in data/raw/MERGED2024_25_PP..csv")
+  stop("Sample institutional data file not found in data/raw/MERGED2024_25_PP.csv")
 }
 
 inst_data <- read_csv(input_file)

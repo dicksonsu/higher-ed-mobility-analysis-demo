@@ -1,5 +1,5 @@
 # 02_descriptive_analysis.R
-# Purpose: Generate descriptive summaries and visualizations for institutional patterns
+# Purpose: Generate descriptive summaries and visualizations for multi-year institutional trends
 # Author: Dickson Su
 # Project: higher-ed-mobility-analysis-demo
 
@@ -25,7 +25,7 @@ if (!dir.exists(output_dir)) {
 # -----------------------------
 # 3. Load cleaned analysis file
 # -----------------------------
-analysis_data <- read_csv(file.path(derived_dir, "institution_analysis_file.csv"))
+analysis_data <- read_csv(file.path(derived_dir, "institution_analysis_file.csv"), show_col_types = FALSE)
 
 # -----------------------------
 # 4. Basic checks
@@ -34,7 +34,10 @@ message("Number of rows loaded:")
 print(nrow(analysis_data))
 
 message("Years available:")
-print(range(analysis_data$year, na.rm = TRUE))
+print(sort(unique(analysis_data$year)))
+
+message("Ownership categories:")
+print(table(analysis_data$ownership, useNA = "ifany"))
 
 # -----------------------------
 # 5. Pell share over time
@@ -51,6 +54,7 @@ write_csv(pell_df, file.path(output_dir, "pell_share_summary.csv"))
 pell_plot <- ggplot(pell_df, aes(x = year, y = pct_pell_mean)) +
   geom_line() +
   geom_point() +
+  scale_y_continuous(labels = label_percent(accuracy = 1)) +
   labs(
     title = "Average Pell Share Over Time",
     x = "Year",
@@ -128,7 +132,7 @@ ggsave(
 )
 
 # -----------------------------
-# 8. Optional: sector-level Pell share summary
+# 8. Pell share over time by sector
 # -----------------------------
 pell_by_sector_df <- analysis_data %>%
   filter(!is.na(ownership)) %>%
@@ -140,9 +144,13 @@ pell_by_sector_df <- analysis_data %>%
 
 write_csv(pell_by_sector_df, file.path(output_dir, "pell_share_by_sector_summary.csv"))
 
-pell_by_sector_plot <- ggplot(pell_by_sector_df, aes(x = year, y = pct_pell_mean, group = ownership)) +
-  geom_line(aes(linetype = ownership)) +
+pell_by_sector_plot <- ggplot(
+  pell_by_sector_df,
+  aes(x = year, y = pct_pell_mean, group = ownership, linetype = ownership)
+) +
+  geom_line() +
   geom_point() +
+  scale_y_continuous(labels = label_percent(accuracy = 1)) +
   labs(
     title = "Average Pell Share Over Time by Sector",
     x = "Year",

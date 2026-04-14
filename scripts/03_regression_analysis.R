@@ -97,3 +97,22 @@ write.csv(
 )
 
 message("Saved regression outputs to output/")
+
+# -----------------------------
+# 8. Optional: 4-year subsample
+# -----------------------------
+reg_data_4y <- reg_data %>%
+  filter(ic_level == "4 year")
+
+model_4y <- feols(
+  pct_pell ~ log_tuition_instate + log_mean_earnings_10y + ownership | stabbr,
+  data = reg_data_4y
+)
+
+message("4-year subsample model summary:")
+print(summary(model_4y))
+
+etable(
+  model_4y,
+  file = file.path(output_dir, "regression_table_4year.txt")
+)

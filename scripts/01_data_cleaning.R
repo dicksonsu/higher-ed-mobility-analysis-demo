@@ -25,12 +25,22 @@ if (!dir.exists(derived_dir)) {
 # 3. Load sample institutional data
 # -----------------------------
 # Expected example input:
-# data/raw/institution_sample.csv
+# data/raw/MERGED2024_25_PP.csv
 #
 # This public-facing script assumes a simplified institutional file
 # with representative variables drawn from public higher education data.
 
-inst_data <- read_csv(file.path(raw_dir, "institution_sample.csv"))
+inst_data <- read_csv(file.path(raw_dir, "MERGED2024_25_PP.csv"))
+
+if (!file.exists(input_file)) {
+  stop("Sample institutional data file not found in data/raw/institution_sample.csv")
+}
+
+inst_data <- read_csv(input_file)
+
+inst_data <- inst_data %>%
+  mutate(across(everything(), ~na_if(., "NULL"))) %>%
+  mutate(across(everything(), ~na_if(., "PrivacySuppressed")))
 
 # -----------------------------
 # 4. Inspect columns
@@ -41,6 +51,18 @@ print(names(inst_data))
 # -----------------------------
 # 5. Clean variable types
 # -----------------------------
+inst_data <- inst_data %>%
+  rename(
+    unitid = UNITID,
+    instnm = INSTNM,
+    stabbr = STABBR,
+    control = CONTROL,
+    iclevel = ICLEVEL,
+    tuition_instate = TUITIONFEE_IN,
+    pct_pell = PCTPELL,
+    mean_earnings_10y = MD_EARN_WNE_P10
+  )
+
 inst_data_clean <- inst_data %>%
   mutate(
     unitid = as.character(unitid),
@@ -88,6 +110,12 @@ analysis_data <- inst_data_clean %>%
 # -----------------------------
 # 8. Create selected derived variables
 # -----------------------------
+analysis_data <- analysis_data %>%
+  mutate(
+    net_price_lowinc = tuition_instate,
+    pell_completion_pct = pct_pell
+  )
+
 analysis_data <- analysis_data %>%
   mutate(
     log_tuition_instate = ifelse(tuition_instate > 0, log(tuition_instate), NA_real_),

@@ -1,6 +1,6 @@
 # Higher Education Mobility Analysis Demo
 
-This repository provides a public-facing demonstration of a higher-education data workflow using institutional data to examine access, affordability, and mobility-related outcomes.
+This repository provides a public-facing demonstration of a multi-year higher-education data workflow using institutional data to examine trends in access, affordability, and mobility-related outcomes.
 
 ## Project overview
 

@@ -9,6 +9,8 @@
 library(dplyr)
 library(tidyr)
 library(readr)
+library(purrr)
+library(stringr)
 
 # -----------------------------
 # 2. Define paths
@@ -22,35 +24,61 @@ if (!dir.exists(derived_dir)) {
 }
 
 # -----------------------------
-# 3. Load sample institutional data
+# 3. Define input files
 # -----------------------------
-# Expected example input:
-# data/raw/MERGED2024_25_PP.csv
-#
-# This public-facing script assumes a simplified institutional file
-# with representative variables drawn from public higher education data.
+scorecard_files <- c(
+  "MERGED2020_21_PP.csv",
+  "MERGED2021_22_PP.csv",
+  "MERGED2022_23_PP.csv",
+  "MERGED2023_24_PP.csv",
+  "MERGED2024_25_PP.csv"
+)
 
-inst_data <- read_csv(file.path(raw_dir, "MERGED2024_25_PP.csv"))
+# Optional check: stop if any file is missing
+missing_files <- scorecard_files[!file.exists(file.path(raw_dir, scorecard_files))]
 
-if (!file.exists(input_file)) {
-  stop("Sample institutional data file not found in data/raw/MERGED2024_25_PP.csv")
+if (length(missing_files) > 0) {
+  stop(
+    paste(
+      "The following input files are missing from data/raw/:",
+      paste(missing_files, collapse = ", ")
+    )
+  )
 }
 
-inst_data <- read_csv(input_file)
+# -----------------------------
+# 4. Read and combine annual files
+# -----------------------------
+read_scorecard_file <- function(filename) {
+  # Extract first year from filename, e.g. 2019 from MERGED2019_20_PP.csv
+  file_year <- str_extract(filename, "\\d{4}") |> as.integer()
+  
+  read_csv(
+    file.path(raw_dir, filename),
+    show_col_types = FALSE
+  ) %>%
+    mutate(year = file_year)
+}
 
+inst_data <- map_dfr(scorecard_files, read_scorecard_file)
+
+# -----------------------------
+# 5. Handle common missing-value strings
+# -----------------------------
 inst_data <- inst_data %>%
   mutate(across(everything(), ~na_if(., "NULL"))) %>%
   mutate(across(everything(), ~na_if(., "PrivacySuppressed")))
 
 # -----------------------------
-# 4. Inspect columns
+# 6. Inspect columns
 # -----------------------------
 message("Available columns:")
 print(names(inst_data))
 
 # -----------------------------
-# 5. Clean variable types
+# 7. Rename selected variables
 # -----------------------------
+# Adjust this list if your specific files use slightly different names.
 inst_data <- inst_data %>%
   rename(
     unitid = UNITID,
@@ -60,9 +88,20 @@ inst_data <- inst_data %>%
     iclevel = ICLEVEL,
     tuition_instate = TUITIONFEE_IN,
     pct_pell = PCTPELL,
-    mean_earnings_10y = MD_EARN_WNE_P10
+    mean_earnings_10y = MD_EARN_WNE_P10,
+    median_debt = DEBT_MDN
   )
 
+# Optional: if you have a low-income net price field available, rename it here.
+# Uncomment and adjust if present in your files:
+# inst_data <- inst_data %>%
+#   rename(
+#     net_price_lowinc = NPT41_PUB
+#   )
+
+# -----------------------------
+# 8. Clean variable types
+# -----------------------------
 inst_data_clean <- inst_data %>%
   mutate(
     unitid = as.character(unitid),
@@ -73,14 +112,12 @@ inst_data_clean <- inst_data %>%
     iclevel = as.integer(iclevel),
     tuition_instate = as.numeric(tuition_instate),
     pct_pell = as.numeric(pct_pell),
-    net_price_lowinc = as.numeric(net_price_lowinc),
     mean_earnings_10y = as.numeric(mean_earnings_10y),
-    median_debt = as.numeric(median_debt),
-    pell_completion_pct = as.numeric(pell_completion_pct)
+    median_debt = as.numeric(median_debt)
   )
 
 # -----------------------------
-# 6. Recode institutional characteristics
+# 9. Recode institutional characteristics
 # -----------------------------
 inst_data_clean <- inst_data_clean %>%
   mutate(
@@ -99,7 +136,7 @@ inst_data_clean <- inst_data_clean %>%
   )
 
 # -----------------------------
-# 7. Filter to analysis-ready sample
+# 10. Filter to analysis-ready sample
 # -----------------------------
 analysis_data <- inst_data_clean %>%
   filter(!is.na(unitid)) %>%
@@ -108,23 +145,16 @@ analysis_data <- inst_data_clean %>%
   filter(!is.na(pct_pell))
 
 # -----------------------------
-# 8. Create selected derived variables
+# 11. Create selected derived variables
 # -----------------------------
 analysis_data <- analysis_data %>%
   mutate(
-    net_price_lowinc = tuition_instate,
-    pell_completion_pct = pct_pell
-  )
-
-analysis_data <- analysis_data %>%
-  mutate(
     log_tuition_instate = ifelse(tuition_instate > 0, log(tuition_instate), NA_real_),
-    log_net_price_lowinc = ifelse(net_price_lowinc > 0, log(net_price_lowinc), NA_real_),
     log_mean_earnings_10y = ifelse(mean_earnings_10y > 0, log(mean_earnings_10y), NA_real_)
   )
 
 # -----------------------------
-# 9. Basic validation checks
+# 12. Basic validation checks
 # -----------------------------
 message("Number of rows in analysis file:")
 print(nrow(analysis_data))
@@ -133,7 +163,7 @@ message("Number of unique institutions:")
 print(n_distinct(analysis_data$unitid))
 
 message("Years covered:")
-print(range(analysis_data$year, na.rm = TRUE))
+print(sort(unique(analysis_data$year)))
 
 message("Ownership categories:")
 print(table(analysis_data$ownership, useNA = "ifany"))
@@ -142,23 +172,21 @@ message("Institution level categories:")
 print(table(analysis_data$ic_level, useNA = "ifany"))
 
 # -----------------------------
-# 10. Missingness check for key variables
+# 13. Missingness check for key variables
 # -----------------------------
 missing_summary <- analysis_data %>%
   summarise(
     pct_pell_missing = sum(is.na(pct_pell)),
     tuition_missing = sum(is.na(tuition_instate)),
-    net_price_lowinc_missing = sum(is.na(net_price_lowinc)),
     earnings_missing = sum(is.na(mean_earnings_10y)),
-    debt_missing = sum(is.na(median_debt)),
-    pell_completion_missing = sum(is.na(pell_completion_pct))
+    debt_missing = sum(is.na(median_debt))
   )
 
 message("Missingness summary:")
 print(missing_summary)
 
 # -----------------------------
-# 11. Save cleaned analysis file
+# 14. Save cleaned analysis file
 # -----------------------------
 write_csv(
   analysis_data,
